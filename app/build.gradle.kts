@@ -11,8 +11,8 @@ android {
         applicationId = "com.foriad.telegramdrive"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.0.5"
+        versionCode = 7
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -44,6 +44,9 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     // Networking (Telegram Bot API is plain HTTPS/JSON + multipart)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // TDLib (official Telegram client library) for Pro Mode: Telegram
+    // ACCOUNT login, single-file uploads up to 2 GB / 4 GB Premium.
+    implementation("io.github.tdlib-android:core:0.1.1")
     // Google Mobile Ads SDK (AdMob) - see AdsConfig.kt for ad unit IDs
     implementation("com.google.android.gms:play-services-ads:23.2.0")
     // Google Play Billing - $10 lifetime Premium (removes all ads forever).
