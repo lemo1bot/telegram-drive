@@ -20,6 +20,24 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putString("bot_name", v).apply()
 
     /**
+     * Save the connection with commit() (synchronous). apply() writes to disk
+     * in the background, and if the process dies right after connecting, the
+     * token can be lost and the app asks for it again on the next launch.
+     */
+    fun saveConnection(token: String, chat: String, name: String) {
+        sp.edit()
+            .putString("bot_token", token)
+            .putString("chat_id", chat)
+            .putString("bot_name", name)
+            .commit()
+    }
+
+    /** Last uncaught crash (class + message), recorded so it can be reported. */
+    var lastCrash: String
+        get() = sp.getString("last_crash", "") ?: ""
+        set(v) = sp.edit().putString("last_crash", v).commit()
+
+    /**
      * Premium (lifetime, $10 one-time via Google Play — see PremiumConfig /
      * BillingManager). Set to true only after Play reports a verified,
      * acknowledged purchase of `premium_lifetime`. When true, ALL ads are
