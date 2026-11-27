@@ -283,6 +283,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDriveListeners() = with(binding) {
         premiumButton.setOnClickListener { showPremiumDialog() }
+        proModeButton.setOnClickListener {
+            startActivity(Intent(this@MainActivity, ProActivity::class.java))
+        }
         uploadButton.setOnClickListener { pickFile.launch("*/*") }
         noteButton.setOnClickListener { showNoteDialog() }
         newFolderButton.setOnClickListener { showNewFolderDialog() }
