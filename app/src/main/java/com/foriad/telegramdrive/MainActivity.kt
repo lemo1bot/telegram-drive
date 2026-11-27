@@ -49,6 +49,8 @@ class MainActivity : AppCompatActivity() {
 
     private var interstitialAd: InterstitialAd? = null
     private var lastInterstitialShownAt = 0L
+    private var appStartedAt = 0L
+    private var uploadsThisSession = 0
 
     // ---- Premium ($10 lifetime via Google Play Billing) ----
     private lateinit var billing: BillingManager
@@ -99,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        appStartedAt = System.currentTimeMillis()
         prefs = Prefs(this)
         billing = BillingManager(this, billingListener)
 
@@ -343,6 +346,7 @@ class MainActivity : AppCompatActivity() {
                         files.add(0, driveFile); prefs.saveFiles(files); refreshList()
                         tmp.delete()
                         toast("Uploaded ✅")
+                        uploadsThisSession++
                         maybeShowInterstitial()
                     }
                 }
@@ -538,10 +542,20 @@ class MainActivity : AppCompatActivity() {
             })
     }
 
-    /** After a successful upload, at most once every 3 minutes. Never for Premium. */
+    /**
+     * Full-screen ad timing (all rules must pass):
+     * - never for Premium
+     * - never in the first 90 seconds after the app opens
+     * - never on the first upload of a session (from the 2nd upload onwards)
+     * - at most once every 5 minutes
+     * It is only ever considered AFTER an upload has finished - never on the
+     * Upload button tap itself, and never at app start.
+     */
     private fun maybeShowInterstitial() {
         if (prefs.isPremium) return // PREMIUM: ads removed permanently
         val now = System.currentTimeMillis()
+        if (now - appStartedAt < AdsConfig.INTERSTITIAL_FIRST_DELAY_MS) return
+        if (uploadsThisSession < AdsConfig.INTERSTITIAL_MIN_UPLOADS_BEFORE_FIRST) return
         if (now - lastInterstitialShownAt < AdsConfig.INTERSTITIAL_MIN_INTERVAL_MS) return
         val ad = interstitialAd ?: return
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
