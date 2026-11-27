@@ -296,6 +296,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="⭐ Go Premium — $10 forever (no ads)" />
+
+            <Button
+                android:id="@+id/proModeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="🚀 Pro Mode — big files up to 2 GB / 4 GB (Telegram account)" />
         </LinearLayout>
 
         <TextView
