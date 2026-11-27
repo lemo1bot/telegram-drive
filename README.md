@@ -60,6 +60,10 @@ The project is a single-module Kotlin app (Material 3) with no backend.
 - Google Mobile Ads SDK (AdMob)
 - Google Play Billing (Premium, Play version)
 
+## Follow
+
+Updates and new releases: **X — [@Bank_of_eth](https://x.com/Bank_of_eth)**
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
