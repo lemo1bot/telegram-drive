@@ -87,7 +87,7 @@ object TdManager {
                 }
             }
             is TdApi.UpdateMessageSendFailed -> {
-                val content = obj.oldMessage.content
+                val content = obj.message?.content
                 if (content is TdApi.MessageDocument) {
                     val fid = content.document.document.id
                     if (pending.remove(fid)?.isUpload == true) {
