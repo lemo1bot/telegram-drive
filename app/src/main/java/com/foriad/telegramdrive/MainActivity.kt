@@ -102,9 +102,25 @@ class MainActivity : AppCompatActivity() {
         prefs = Prefs(this)
         billing = BillingManager(this, billingListener)
 
+        // Record any crash so the next launch can show what happened instead
+        // of silently restarting. Never let the recorder itself crash the app.
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                prefs.lastCrash = "${error.javaClass.simpleName}: ${error.message ?: ""} @ " +
+                    (error.stackTrace.firstOrNull()?.let { "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" } ?: "")
+            } catch (_: Exception) { }
+            previousHandler?.uncaughtException(thread, error)
+        }
+
+        // Ads must never be able to crash the app (e.g. Play services issues).
         if (!prefs.isPremium) {
-            MobileAds.initialize(this) {}
-            loadInterstitial()
+            try {
+                MobileAds.initialize(this) {}
+                loadInterstitial()
+            } catch (e: Exception) {
+                // Drive works fine without ads if the SDK fails to start.
+            }
         }
 
         setupWizardListeners()
@@ -124,6 +140,12 @@ class MainActivity : AppCompatActivity() {
         binding.setupContainer.visibility = View.VISIBLE
         binding.driveContainer.visibility = View.GONE
         goToStep(1)
+        // If the previous session crashed, say so here (helps support).
+        val crash = prefs.lastCrash
+        if (crash.isNotBlank()) {
+            binding.tokenStatus.text = "Last time the app closed with an error: $crash\nYou can continue setup normally."
+            prefs.lastCrash = ""
+        }
     }
 
     private fun goToStep(step: Int) {
@@ -216,9 +238,7 @@ class MainActivity : AppCompatActivity() {
         TelegramApi(pendingToken).sendMessage(pendingChatId,
             "✅ Telegram Drive connected! Files you upload in the app will appear here.",
             onOk = { runOnUiThread {
-                prefs.botToken = pendingToken
-                prefs.chatId = pendingChatId
-                prefs.botName = pendingBotName
+                prefs.saveConnection(pendingToken, pendingChatId, pendingBotName)
                 toast("Connected!")
                 showDrive()
             } },
@@ -244,11 +264,14 @@ class MainActivity : AppCompatActivity() {
         refreshFolderSpinner()
         refreshList()
         updatePremiumUi()
-        loadBannerAd()
+        // Ads and billing are extras - if either fails on this device, the
+        // Drive itself must still open. Guard both so they can never take
+        // the Drive screen down with them.
+        try { loadBannerAd() } catch (e: Exception) { binding.adView.visibility = View.GONE }
         // Quietly connect to Play: loads the real Premium price and
         // auto-restores Premium if this Google account already bought it.
         // On sideloaded installs this fails silently (see BillingManager).
-        billing.start()
+        try { billing.start() } catch (e: Exception) { /* Premium just stays unavailable */ }
     }
 
     private fun setupDriveListeners() = with(binding) {
