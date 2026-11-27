@@ -303,6 +303,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="🚀 Pro Mode — big files up to 2 GB / 4 GB (Telegram account)" />
+
+            <Button
+                android:id="@+id/followXButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Follow on X — @Bank_of_eth" />
         </LinearLayout>
 
         <TextView
