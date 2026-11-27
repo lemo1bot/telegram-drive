@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit
 class TelegramApi(private val token: String) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(120, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(600, TimeUnit.SECONDS)
+        .readTimeout(600, TimeUnit.SECONDS)
         .build()
 
     private fun url(method: String) = "https://api.telegram.org/bot$token/$method"
@@ -114,6 +114,22 @@ class TelegramApi(private val token: String) {
                 if (path.isBlank()) onError("Telegram did not return a file path")
                 else onOk(path, "https://api.telegram.org/file/bot$token/$path")
             }, onError)
+    }
+
+    /** Download a whole file (one part, <= 20 MB) into memory. */
+    fun downloadBytes(downloadUrl: String, onOk: (ByteArray) -> Unit, onError: (String) -> Unit) {
+        client.newCall(Request.Builder().url(downloadUrl).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = onError(e.message ?: "No internet connection")
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val bytes = response.body?.bytes()
+                    if (response.isSuccessful && bytes != null) onOk(bytes)
+                    else onError("Download failed (${response.code})")
+                } catch (e: Exception) {
+                    onError(e.message ?: "Download failed")
+                }
+            }
+        })
     }
 
     fun deleteMessage(chatId: String, messageId: Int, onOk: () -> Unit, onError: (String) -> Unit) =
