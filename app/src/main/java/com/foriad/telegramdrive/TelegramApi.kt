@@ -59,10 +59,28 @@ class TelegramApi(private val token: String) {
     fun sendMessage(chatId: String, text: String, onOk: (JSONObject) -> Unit, onError: (String) -> Unit) =
         postForm("sendMessage", mapOf("chat_id" to chatId, "text" to text), onOk, onError)
 
-    /** Detect the group chat ID: user sends any message in the group, then call this. */
+    /** Detect the group chat ID: user sends any message in the group, then call this.
+     *  NOTE: getUpdates returns a JSON ARRAY as "result" (unlike most methods,
+     *  which return an object), so it cannot go through [execute]. */
     fun getUpdates(onOk: (org.json.JSONArray) -> Unit, onError: (String) -> Unit) {
-        execute(Request.Builder().url(url("getUpdates")).build(),
-            { result -> onOk(result.optJSONArray("updates") ?: org.json.JSONArray()) }, onError)
+        client.newCall(Request.Builder().url(url("getUpdates")).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) =
+                onError(e.message ?: "No internet connection")
+
+            override fun onResponse(call: Call, response: Response) {
+                val body = response.body?.string().orEmpty()
+                try {
+                    val json = JSONObject(body)
+                    if (json.optBoolean("ok")) {
+                        onOk(json.optJSONArray("result") ?: org.json.JSONArray())
+                    } else {
+                        onError(json.optString("description", "Telegram error ${response.code}"))
+                    }
+                } catch (e: Exception) {
+                    onError("Bad response from Telegram (${response.code})")
+                }
+            }
+        })
     }
 
     /** Upload any file (max 50 MB for bots). Uses sendDocument so the file is stored unchanged. */
@@ -123,6 +141,7 @@ class TelegramApi(private val token: String) {
             for (i in updates.length() - 1 downTo 0) {
                 val u = updates.optJSONObject(i) ?: continue
                 val msg = u.optJSONObject("message") ?: u.optJSONObject("my_chat_member")
+                    ?: u.optJSONObject("chat_member") ?: u.optJSONObject("edited_message")
                     ?: u.optJSONObject("channel_post") ?: continue
                 val chat = msg.optJSONObject("chat") ?: continue
                 val type = chat.optString("type")
