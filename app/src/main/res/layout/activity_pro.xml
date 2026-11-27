@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0E1621">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Telegram Drive — Pro Mode"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Pro Mode logs in with YOUR Telegram account (not a bot), so you can upload single files up to 2 GB — or 4 GB if your account has Telegram Premium. Files are saved in your Saved Messages, a private chat only you can see."
+            android:textColor="#B0BEC5"
+            android:textSize="14sp" />
+
+        <!-- Step A: API credentials -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Step 1 — Your free Telegram API keys (one time)"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Telegram asks every app like this to use your own free keys:\n1. Open my.telegram.org in your browser and log in with your phone number\n2. Tap &quot;API development tools&quot;\n3. Create an app (any name) — you will get an api_id (numbers) and an api_hash (letters and numbers)\n4. Paste both here. They stay only on your phone."
+            android:textColor="#B0BEC5"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/apiIdInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="api_id, e.g. 1234567"
+            android:inputType="number"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#78909C" />
+
+        <EditText
+            android:id="@+id/apiHashInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="api_hash, e.g. a1b2c3d4e5f6..."
+            android:inputType="text"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#78909C" />
+
+        <Button
+            android:id="@+id/saveApiButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Save keys and start login" />
+
+        <!-- Step B: phone login -->
+        <LinearLayout
+            android:id="@+id/loginSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Step 2 — Log in with your Telegram account"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/loginStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#B0BEC5"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/phoneInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="Phone number, e.g. +919876543210"
+                android:inputType="phone"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#78909C" />
+
+            <Button
+                android:id="@+id/sendPhoneButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send login code" />
+
+            <EditText
+                android:id="@+id/codeInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:hint="Login code from Telegram"
+                android:inputType="number"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#78909C" />
+
+            <Button
+                android:id="@+id/sendCodeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Confirm code" />
+
+            <EditText
+                android:id="@+id/passwordInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:hint="Telegram 2-Step password (only if you set one)"
+                android:inputType="textPassword"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#78909C" />
+
+            <Button
+                android:id="@+id/sendPasswordButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Confirm password" />
+        </LinearLayout>
+
+        <!-- Step C: Pro drive -->
+        <LinearLayout
+            android:id="@+id/proDriveSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/accountText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/uploadProButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="⬆️ Upload big file (up to 2 GB / 4 GB)" />
+
+            <TextView
+                android:id="@+id/proStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="#B0BEC5"
+                android:textSize="13sp" />
+
+            <ListView
+                android:id="@+id/proFileList"
+                android:layout_width="match_parent"
+                android:layout_height="360dp"
+                android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/logoutProButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Log out of Pro Mode" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
