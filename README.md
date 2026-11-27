@@ -16,7 +16,7 @@ Get the latest Android APK from the [**Releases**](https://github.com/lemo1bot/t
 
 The app guides you through everything, one step at a time:
 
-1. **Create a bot** — talk to [@BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, and copy the token he gives you. The app has a copy button and checks the token for you.
+1. **Create a bot** — talk to [BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, and copy the token he gives you. The app has a copy button and checks the token for you.
 2. **Create a private group** in Telegram, add your bot to it as an admin, and send any message in the group. The app finds your group automatically.
 3. **Connect** — the app confirms the connection with a message in your group. Done.
 
