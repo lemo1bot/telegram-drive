@@ -35,7 +35,7 @@ class Prefs(context: Context) {
     /** Last uncaught crash (class + message), recorded so it can be reported. */
     var lastCrash: String
         get() = sp.getString("last_crash", "") ?: ""
-        set(v) = sp.edit().putString("last_crash", v).commit()
+        set(v) { sp.edit().putString("last_crash", v).commit() }
 
     /**
      * Premium (lifetime, $10 one-time via Google Play — see PremiumConfig /
