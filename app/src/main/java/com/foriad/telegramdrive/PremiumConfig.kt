@@ -8,8 +8,7 @@ package com.foriad.telegramdrive
  * no banner, no interstitials — on this phone, and restorable
  * on a new phone with the same Google account ("Restore Purchase").
  *
- * The price is NOT hard-coded in the app. It is set in Play Console:
- *   Play Console → Monetize → In-app products → Create product
+ * The price is not hard-coded in the app; it is provided by Google Play at purchase time.
  *   Product ID: premium_lifetime  (must match PRODUCT_ID below)
  *   Price: $10 → Activate
  * The app asks Google Play for the product and displays the REAL
@@ -21,7 +20,7 @@ package com.foriad.telegramdrive
  * Full steps: see README.md → "Premium — $10 forever (Google Play Billing)".
  */
 object PremiumConfig {
-    // Must exactly match the product ID created in Play Console.
+    // In-app product ID for Lifetime Premium.
     const val PRODUCT_ID = "premium_lifetime"
 
     // Shown only when Google Play is unavailable and the real price can't be loaded.
