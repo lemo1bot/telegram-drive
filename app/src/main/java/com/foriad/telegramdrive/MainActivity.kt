@@ -48,6 +48,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: FileAdapter
 
     private var interstitialAd: InterstitialAd? = null
+
+    // Telegram bot limits per file: 50 MB send / 20 MB download. Parts stay
+    // safely under both, so any total size works by splitting.
+    private val PART_SIZE_BYTES = 19L * 1024 * 1024
     private var lastInterstitialShownAt = 0L
     private var appStartedAt = 0L
     private var uploadsThisSession = 0
@@ -322,8 +326,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun uploadUri(uri: Uri) {
         val name = queryName(uri) ?: "file-${System.currentTimeMillis()}"
-        val size = querySize(uri)
-        if (size > 50L * 1024 * 1024) { toast("Telegram bots can upload up to 50 MB per file."); return }
         toast("Uploading $name…")
         Thread {
             try {
@@ -331,33 +333,104 @@ class MainActivity : AppCompatActivity() {
                 contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(tmp).use { out -> input.copyTo(out) }
                 } ?: throw Exception("Could not read file")
-                val api = TelegramApi(prefs.botToken)
-                val caption = "📁 Telegram Drive • $currentFolder"
-                val done = { msg: org.json.JSONObject ->
-                    val (fileId, kind) = TelegramApi.extractFileId(msg)
-                    val driveFile = DriveFile(
-                        id = UUID.randomUUID().toString(), name = name,
-                        kind = if (kind == "photo") "photo" else kindFromName(name),
-                        sizeBytes = tmp.length(), folder = currentFolder,
-                        telegramFileId = fileId, telegramMessageId = msg.optInt("message_id"),
-                        uploadedAt = System.currentTimeMillis()
-                    )
-                    runOnUiThread {
-                        files.add(0, driveFile); prefs.saveFiles(files); refreshList()
-                        tmp.delete()
-                        toast("Uploaded ✅")
-                        uploadsThisSession++
-                        maybeShowInterstitial()
-                    }
+                // ALWAYS sendDocument: files are stored in Telegram unchanged,
+                // at original quality (sendPhoto compresses images).
+                if (tmp.length() <= PART_SIZE_BYTES) {
+                    uploadSingle(tmp, name)
+                } else {
+                    uploadInParts(tmp, name)
                 }
-                val fail = { err: String -> runOnUiThread { toast("Upload failed: $err"); tmp.delete() } }
-                val mime = contentResolver.getType(uri) ?: ""
-                if (mime.startsWith("image/")) api.sendPhoto(prefs.chatId, tmp, name, caption, done, fail)
-                else api.sendDocument(prefs.chatId, tmp, name, caption, done, fail)
             } catch (e: Exception) {
                 runOnUiThread { toast("Upload failed: ${e.message}") }
             }
         }.start()
+    }
+
+    private fun uploadSingle(tmp: File, name: String) {
+        val api = TelegramApi(prefs.botToken)
+        val caption = "📁 Telegram Drive • $currentFolder"
+        api.sendDocument(prefs.chatId, tmp, name, caption,
+            onOk = { msg -> runOnUiThread {
+                val (fileId, _) = TelegramApi.extractFileId(msg)
+                finishUpload(DriveFile(
+                    id = UUID.randomUUID().toString(), name = name,
+                    kind = kindFromName(name), sizeBytes = tmp.length(), folder = currentFolder,
+                    telegramFileId = fileId, telegramMessageId = msg.optInt("message_id"),
+                    uploadedAt = System.currentTimeMillis()
+                ), tmp)
+            } },
+            onError = { err -> runOnUiThread { toast("Upload failed: $err"); tmp.delete() } }
+        )
+    }
+
+    /** Files bigger than one Telegram part are split into <=19 MB chunks and
+     *  uploaded one after another; the Drive entry remembers every part. */
+    private fun uploadInParts(tmp: File, name: String) {
+        val partFiles = mutableListOf<File>()
+        try {
+            tmp.inputStream().use { input ->
+                val buffer = ByteArray(1024 * 1024)
+                var idx = 0
+                while (true) {
+                    val part = File(cacheDir, "part_${System.currentTimeMillis()}_$idx")
+                    var written = 0L
+                    part.outputStream().use { out ->
+                        while (written < PART_SIZE_BYTES) {
+                            val toRead = minOf(buffer.size.toLong(), PART_SIZE_BYTES - written).toInt()
+                            val n = input.read(buffer, 0, toRead)
+                            if (n < 0) break
+                            out.write(buffer, 0, n); written += n
+                        }
+                    }
+                    if (written == 0L) { part.delete(); break }
+                    partFiles.add(part); idx++
+                    if (written < PART_SIZE_BYTES) break
+                }
+            }
+        } catch (e: Exception) {
+            runOnUiThread { toast("Upload failed while splitting: ${e.message}") }
+            partFiles.forEach { it.delete() }; tmp.delete(); return
+        }
+        runOnUiThread { toast("Large file: uploading in ${partFiles.size} parts…") }
+        uploadPartAt(tmp, name, partFiles, 0, mutableListOf(), mutableListOf())
+    }
+
+    private fun uploadPartAt(tmp: File, name: String, partFiles: List<File>, index: Int,
+                             ids: MutableList<String>, msgs: MutableList<Int>) {
+        if (index >= partFiles.size) {
+            runOnUiThread {
+                finishUpload(DriveFile(
+                    id = UUID.randomUUID().toString(), name = name,
+                    kind = kindFromName(name), sizeBytes = tmp.length(), folder = currentFolder,
+                    telegramFileId = ids.firstOrNull() ?: "", telegramMessageId = msgs.firstOrNull() ?: 0,
+                    uploadedAt = System.currentTimeMillis(), parts = ids.toList(), partMsgs = msgs.toList()
+                ), tmp)
+                partFiles.forEach { it.delete() }
+            }
+            return
+        }
+        val api = TelegramApi(prefs.botToken)
+        val caption = "📁 Telegram Drive • $currentFolder • part ${index + 1}/${partFiles.size}"
+        api.sendDocument(prefs.chatId, partFiles[index], "$name.part${index + 1}", caption,
+            onOk = { msg ->
+                val (fileId, _) = TelegramApi.extractFileId(msg)
+                ids.add(fileId); msgs.add(msg.optInt("message_id"))
+                runOnUiThread { toast("Uploaded part ${index + 1}/${partFiles.size}") }
+                uploadPartAt(tmp, name, partFiles, index + 1, ids, msgs)
+            },
+            onError = { err -> runOnUiThread {
+                toast("Upload failed at part ${index + 1}: $err")
+                partFiles.forEach { it.delete() }; tmp.delete()
+            } }
+        )
+    }
+
+    private fun finishUpload(driveFile: DriveFile, tmp: File) {
+        files.add(0, driveFile); prefs.saveFiles(files); refreshList()
+        tmp.delete()
+        toast("Uploaded ✅")
+        uploadsThisSession++
+        maybeShowInterstitial()
     }
 
     private fun kindFromName(name: String): String {
@@ -376,6 +449,7 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("OK", null).show()
             return
         }
+        if (file.parts.size > 1) { downloadParts(file); return }
         if (file.telegramFileId.isBlank()) { toast("No Telegram file ID saved for this item"); return }
         toast("Getting download link…")
         TelegramApi(prefs.botToken).getFile(file.telegramFileId,
@@ -387,6 +461,68 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** Download every part of a large file and merge them back into one file
+     *  in the phone's Downloads folder. */
+    private fun downloadParts(file: DriveFile) {
+        toast("Downloading ${file.parts.size} parts…")
+        val merged = File(cacheDir, "download_${System.currentTimeMillis()}")
+        val api = TelegramApi(prefs.botToken)
+        fun fetchAt(index: Int) {
+            if (index >= file.parts.size) {
+                // All parts merged - save to Downloads.
+                try {
+                    val savedName = saveToDownloads(merged, file.name)
+                    runOnUiThread { toast("Saved to Downloads: $savedName ✅") }
+                } catch (e: Exception) {
+                    runOnUiThread { toast("Could not save file: ${e.message}") }
+                }
+                merged.delete()
+                return
+            }
+            api.getFile(file.parts[index],
+                onOk = { _, url ->
+                    api.downloadBytes(url,
+                        onOk = { bytes ->
+                            try {
+                                java.io.FileOutputStream(merged, true).use { it.write(bytes) }
+                                runOnUiThread { toast("Downloaded part ${index + 1}/${file.parts.size}") }
+                                fetchAt(index + 1)
+                            } catch (e: Exception) {
+                                runOnUiThread { toast("Download failed: ${e.message}") }
+                            }
+                        },
+                        onError = { err -> runOnUiThread { toast("Download failed: $err") } }
+                    )
+                },
+                onError = { err -> runOnUiThread { toast("Download failed: $err") } }
+            )
+        }
+        fetchAt(0)
+    }
+
+    private fun saveToDownloads(source: File, displayName: String): String {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, displayName)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/octet-stream")
+                put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw Exception("Downloads is not available")
+            contentResolver.openOutputStream(uri)?.use { out ->
+                source.inputStream().use { it.copyTo(out) }
+            } ?: throw Exception("Could not write to Downloads")
+            values.clear()
+            values.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+            contentResolver.update(uri, values, null, null)
+            return displayName
+        }
+        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+        val dest = File(dir, displayName)
+        source.copyTo(dest, overwrite = true)
+        return dest.name
+    }
+
     private fun fileActions(file: DriveFile) {
         val actions = arrayOf("Download / Open", "Delete")
         AlertDialog.Builder(this).setTitle(file.name).setItems(actions) { _, which ->
@@ -394,8 +530,11 @@ class MainActivity : AppCompatActivity() {
                 0 -> openOrDownload(file)
                 1 -> {
                     files.remove(file); prefs.saveFiles(files); refreshList()
-                    if (file.telegramMessageId != 0) {
-                        TelegramApi(prefs.botToken).deleteMessage(prefs.chatId, file.telegramMessageId, {}, {})
+                    val api = TelegramApi(prefs.botToken)
+                    if (file.partMsgs.isNotEmpty()) {
+                        file.partMsgs.forEach { mid -> if (mid != 0) api.deleteMessage(prefs.chatId, mid, {}, {}) }
+                    } else if (file.telegramMessageId != 0) {
+                        api.deleteMessage(prefs.chatId, file.telegramMessageId, {}, {})
                     }
                     toast("Deleted")
                 }
