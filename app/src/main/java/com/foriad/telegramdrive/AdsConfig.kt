@@ -18,10 +18,10 @@ package com.foriad.telegramdrive
  */
 object AdsConfig {
     // Google official TEST banner ID - REPLACE with your own Banner ad unit ID
-    const val BANNER_ID = "ca-app-pub-3940256099942544/6300978111"
+    const val BANNER_ID = "ca-app-pub-8301774269044238/2806003913"
 
     // Google official TEST interstitial ID - REPLACE with your own Interstitial ad unit ID
-    const val INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712"
+    const val INTERSTITIAL_ID = "ca-app-pub-8301774269044238/1946996625"
 
     // Never show an interstitial more often than this (avoids annoying users / AdMob policy issues)
     const val INTERSTITIAL_MIN_INTERVAL_MS = 3 * 60 * 1000L
