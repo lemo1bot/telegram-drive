@@ -127,7 +127,7 @@ class BillingManager(
                 productDetails = details
                 postPrice(details)
             } else {
-                // Product missing in Play Console for this app, or this APK
+                // Product not available for this app, or this build
                 // was sideloaded so Play doesn't serve products to it.
                 postUnavailable(
                     "The Premium product was not found in Google Play for this install."
