@@ -286,6 +286,11 @@ class MainActivity : AppCompatActivity() {
         proModeButton.setOnClickListener {
             startActivity(Intent(this@MainActivity, ProActivity::class.java))
         }
+        followXButton.setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://x.com/Bank_of_eth")))
+            } catch (e: Exception) { /* no browser available */ }
+        }
         uploadButton.setOnClickListener { pickFile.launch("*/*") }
         noteButton.setOnClickListener { showNoteDialog() }
         newFolderButton.setOnClickListener { showNewFolderDialog() }
